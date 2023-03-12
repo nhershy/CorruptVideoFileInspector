@@ -13,7 +13,7 @@ Sometimes you come across a video file that is corrupt. Whent trying to play the
 This program searches though a selected directory and its subdirectories for all video file types. The file types are analyzed under the hood using `ffmpeg`. If any bad sectors in the video file are found, it will be marked as corrupt. If not, it is deemed a healthy file. This performs a very thorough scan of each file and is the best way to most accurately assess the integrity of the video files. The program is written in Python and has a GUI interface built with `tkinter`. This program was built with macOS and Apple-silicone in mind. `py2app` was used to create a standalone application that runs on macOS without further configuration. 
 
 ### How to Use
-* If using macOS, simply download the `dist/CorruptVideoInspector.app` file
+* If using macOS, simply download and run the `dist/CorruptVideoInspector.app` file
 * If using Windows/Linux, simply run the python script `CorruptVideoInspector.py`
 * Chose a directory (this will search the selected directory and all containing subdirectories for all video files)
 * Choose an index to start the scan at **(leave '1' for default to start from the beginning and scan all files)**. This "index" option allows you resume scanning from a certain video. For example, if your computer accidently restarted after scanning 90 of 100 videos in a directory, you can restart the program and type "90" to start from the 90th video file instead of scanning all videos over from the beginning. If you are unsure which video was being scanned when the computer restarted, check the "_Results.csv" file for an indexed listing of all files that have successfully been scanned/completed. 
