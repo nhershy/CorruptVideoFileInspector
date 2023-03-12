@@ -1,8 +1,12 @@
+
 # Corrupt Video Inspector
 
-<p align="left">
-  <img src="icon.png" width="100" height="100" />
-</p>
+<body>
+  <h2 style="float:left;">Corrupt Video Inspector</h2>
+  <p align="left">
+    <img style="float:right;" src="icon.png" width="100" height="100" />
+  </p>
+</body>
 
 ### About
 Sometimes you come across a video file that is corrupt. Whent trying to play the file in a desktop video player, it is not able to be viewed at all. Other times, it is not as black and white as a video file being "playable" or "non-playable". Sometimes videos have buggy/fuzzy/freezy-glitchy sections within several timestamps of the video. For example, the first hour of the video will run smoothly, but then every few minutes there will be a 20 second chunk of freezy-glitchiness, only to resume normally once that bad sector has passed. So it may be still watchable, but annoying and detracts from the overall enjoyment of the movie. If you are a movie collector like me, you have thousands of files and a small fraction of them may be lightly-corrupt. The goal was to identify which files in my collection were corrupt. Made for the sophisticated schemer. 
