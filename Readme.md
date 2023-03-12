@@ -18,11 +18,11 @@ This program searches though a selected directory and its subdirectories for all
 </p>
 
 ### Technical references
-[FFMPEG official documentation](https://ffmpeg.org/ffmpeg.html)
-[The command to scan a video file for integrity](https://gist.github.com/ridvanaltun/8880ab207e5edc92a58608d466095dec)
-[More details on checking integrity of video files](https://superuser.com/questions/100288/how-can-i-check-the-integrity-of-a-video-file-avi-mpeg-mp4)
-[tkinter](https://docs.python.org/3/library/tkinter.html)
-[py2app](https://py2app.readthedocs.io/en/latest/#)
+* [FFMPEG official documentation](https://ffmpeg.org/ffmpeg.html)
+* [The command to scan a video file for integrity](https://gist.github.com/ridvanaltun/8880ab207e5edc92a58608d466095dec)
+* [More details on checking integrity of video files](https://superuser.com/questions/100288/how-can-i-check-the-integrity-of-a-video-file-avi-mpeg-mp4)
+* [tkinter](https://docs.python.org/3/library/tkinter.html)
+* [py2app](https://py2app.readthedocs.io/en/latest/#)
 
 ### Caveats
 * Since this utilizes an extremely thorough scan technique, the process is very slow. A 2GB movie may take about 2-5 minutes to scan. A 50GB movie may take 10-20 minutes to scan. If your collection is big, the scanning process can take days. This is all dependent on your hardware, of course. But since `ffmpeg` utilizes an in-depth scan, every sector of the video is scanned, so there are no false positives/negatives. Other scanning techniques may scan the video quickly, but in reality only the metadata is scanned, not the file itself. There are also other scanning techniques that will scan the first 5% of the video and if no error is found, it will be marked healthy. But this is not accurate either because the video may have unhealthy sections within the last 10% of the movie. Therefore, this technique is the most accurate, forfeiting speed for precision. 
