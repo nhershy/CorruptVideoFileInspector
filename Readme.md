@@ -3,7 +3,7 @@
 
 <body>
   <h2 style="float:left;">Corrupt Video Inspector</h2>
-  <p align="left">
+  <p align="right">
     <img style="float:right;" src="icon.png" width="100" height="100" />
   </p>
 </body>
