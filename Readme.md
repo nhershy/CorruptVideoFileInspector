@@ -2,7 +2,7 @@
 # Corrupt Video Inspector
 
 
-<p align="right">
+<p align="left">
   <img src="icon.png" width="75" height="75" />
 </p>
 
