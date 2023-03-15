@@ -21,7 +21,7 @@ This program searches though a selected directory and its subdirectories for all
 
 
 <p align="center">
-  <img src="assets/demo2.png" />
+  <img src="assets/demo2.jpeg" />
 </p>
 
 ### Technical references
