@@ -2,7 +2,7 @@
 # Corrupt Video Inspector
 
 
-<p align="left">
+<p align="right">
   <img src="icon.png" width="75" height="75" />
 </p>
 
@@ -21,7 +21,7 @@ This program searches though a selected directory and its subdirectories for all
 
 
 <p align="center">
-  <img src="assets/demo.png" />
+  <img src="assets/demo2.png" />
 </p>
 
 ### Technical references
