@@ -14,6 +14,7 @@ This program searches though a selected directory and its subdirectories for all
 
 ### How to Use
 * If using macOS, simply download and run the `dist/CorruptVideoInspector.app` file
+* If using Windows, simply download and run the [CorruptVideoInspector.exe](https://drive.google.com/file/d/15ecVKSCP6YxGHn5k32VeL7yjsUGGzrog/view?usp=share_link) compiled executable. (hosted on this link because GitHub does not allow files of more than 25MB to be uploaded here)
 * If using Windows/Linux, simply run the python script `CorruptVideoInspector.py`
 * Chose a directory (this will search the selected directory and all containing subdirectories for all video files)
 * Choose an index to start the scan at **(leave '1' for default to start from the beginning and scan all files)**. This "index" option allows you resume scanning from a certain video. For example, if your computer accidently restarted after scanning 90 of 100 videos in a directory, you can restart the program and type "90" to start from the 90th video file instead of scanning all videos over from the beginning. If you are unsure which video was being scanned when the computer restarted, check the "_Results.csv" file for an indexed listing of all files that have successfully been scanned/completed. 
@@ -30,6 +31,7 @@ This program searches though a selected directory and its subdirectories for all
 * [More details on checking integrity of video files](https://superuser.com/questions/100288/how-can-i-check-the-integrity-of-a-video-file-avi-mpeg-mp4)
 * [tkinter](https://docs.python.org/3/library/tkinter.html)
 * [py2app](https://py2app.readthedocs.io/en/latest/#)
+* [pyinstaller](https://pyinstaller.org/en/stable/)
 
 ### Caveats
 * Since this utilizes an extremely thorough scan technique, the process is very slow. A 2GB movie may take about 2-5 minutes to scan. A 50GB movie may take 10-20 minutes to scan. If your collection is big, the scanning process can take days. This is all dependent on your hardware, of course. But since `ffmpeg` utilizes an in-depth scan, every sector of the video is scanned, so there are no false positives/negatives. Other scanning techniques may scan the video quickly, but in reality only the metadata is scanned, not the file itself. There are also other scanning techniques that will scan the first 5% of the video and if no error is found, it will be marked healthy. But this is not accurate either because the video may have unhealthy sections within the last 10% of the movie. Therefore, this technique is the most accurate, forfeiting speed for precision. 
