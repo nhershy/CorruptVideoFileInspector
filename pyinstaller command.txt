@@ -1,5 +1,0 @@
-
-
-Command to build windows exe:
-
-pyinstaller --add-binary="ffmpeg.exe;." --add-data="icon.ico;." --icon="icon.ico" --noconsole --onefile CorruptVideoInspector.py
