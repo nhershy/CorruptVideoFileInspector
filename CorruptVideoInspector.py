@@ -100,22 +100,40 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
 
                     abs_file_path = os.path.join(root, filename)
 
-                    proc = subprocess.Popen(f'./ffmpeg -v error -i {shlex.quote(abs_file_path)} -f null - 2>&1', shell=True,
-                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    # macOS
+                    # proc = subprocess.Popen(f'./ffmpeg -v error -i {shlex.quote(abs_file_path)} -f null - 2>&1', shell=True,
+                    #                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+                    # Windows
+
+                    #ffmpeg_path = os.path.dirname(sys._MEIPASS)
+                    ffmpeg_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'ffmpeg.exe'))
+
+                    # Debug
+                    print(f'ffmpeg path= {ffmpeg_path}\n')
+
+                    proc = subprocess.Popen(f'{ffmpeg_path} -v error -i {abs_file_path} -f null error.log', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
                     output, error = proc.communicate()
+
+                    # output = ""
+                    # error = ""
 
                     # if proc.returncode != 0:
                     #     log_file.write(f'Output of "ffmpeg": {output}\n')
                     #     log_file.write(f'ERROR in "ffmpeg": {error}\n')
                     #     log_file.flush()
 
+                    # Debug
+                    print(f'output= {output}\n')
+                    print(f'error= {error}\n')
+
                     row_index = count
                     if (index_start != 1):
                         row_index = (count + 1) - index_start
 
                     row = ''
-                    if not output:
+                    if not error:
                         # Healthy
                         print("\033[92m{0}\033[00m".format("  HEALTHY -> {}".format(filename)), end='\n')  # red
                         log_file.write(f'  HEALTHY -> {filename}\n')
@@ -198,6 +216,8 @@ root = tk.Tk()
 root.resizable(False, False)
 root.geometry("400x500")
 root.title("Corrupt Video Inspector")
+icon_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'icon.ico'))
+root.iconbitmap(default=icon_path)
 g_progress = tk.StringVar()
 g_count = tk.StringVar()
 g_currently_processing = tk.StringVar()
