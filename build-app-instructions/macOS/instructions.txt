@@ -1,0 +1,3 @@
+Run command in terminal:
+
+python3 setup.py py2app
