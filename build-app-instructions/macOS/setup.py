@@ -7,10 +7,10 @@ Usage:
 
 from setuptools import setup
 
-APP = ['CorruptVideoInspector.py']
-DATA_FILES = ['ffmpeg']
+APP = ['../../CorruptVideoInspector.py']
+DATA_FILES = ['../../ffmpeg']
 OPTIONS = {
-	'iconfile': 'icon.icns'
+	'iconfile': '../../icon.icns'
 }
 
 setup(
