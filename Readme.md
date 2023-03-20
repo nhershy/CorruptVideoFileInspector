@@ -29,7 +29,7 @@ This program searches though a selected directory and its subdirectories for all
 
 #### Windows OS
 <p align="center">
-  <img src="windows-assets/demo-win.png" />
+  <img src="assets/demo-win.png" />
 </p>
 
 ### Technical references
