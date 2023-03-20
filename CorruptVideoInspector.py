@@ -27,9 +27,14 @@ def isLinuxOs():
         return True
     return False
 
-def selectDirectory(root):
-    root.withdraw()
-    return filedialog.askdirectory()
+def selectDirectory(root, label_select_directory, button_select_directory):
+    # root.withdraw()
+    directory = filedialog.askdirectory()
+
+    if len(directory) > 0:
+        label_select_directory.destroy()
+        button_select_directory.destroy()
+        afterDirectoryChosen(root, directory)
 
 def countAllVideoFiles(dir):
     total = 0
@@ -38,6 +43,16 @@ def countAllVideoFiles(dir):
             if file.lower().endswith(tuple(VIDEO_EXTENSIONS)):
                 total += 1
     return total
+
+def getAllVideoFiles(dir):
+    index = 1
+    videos_found_list = []
+    for root, dirs, files in os.walk(dir):
+        for file in files:
+            if file.lower().endswith(tuple(VIDEO_EXTENSIONS)):
+                videos_found_list.append(f' {index}:  {file}')
+                index += 1
+    return videos_found_list
 
 def estimatedTime(total_videos):
     # estimating 3 mins per 2GB video file, on average
@@ -56,6 +71,8 @@ def calculateProgress(count, total):
 
 def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index_start, log_file):
     try:
+        global g_currently_processing
+
         # CSV Results file
         results_file_path = os.path.join(directory, '_Results.csv')
         results_file_exists = os.path.isfile(results_file_path)
@@ -107,7 +124,6 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
                     g_count.set(f"{count+1} / {totalVideoFiles}")
                     tkinter_window.update()
 
-                    global g_currently_processing
                     g_currently_processing.set(filename)
                     tkinter_window.update()
 
@@ -146,7 +162,7 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
                         log_file.write(f'  HEALTHY -> {filename}\n')
                         log_file.flush()
                         row = [filename, 0]
-                        listbox_completed_videos.insert(tk.END, filename)
+                        listbox_completed_videos.insert(tk.END, f' {filename}')
                         listbox_completed_videos.itemconfig(row_index, bg='green')
                         tkinter_window.update()
                     else:
@@ -155,7 +171,7 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
                         log_file.write(f'  CORRUPTED -> {filename}\n')
                         log_file.flush()
                         row = [filename, 1]
-                        listbox_completed_videos.insert(tk.END, filename)
+                        listbox_completed_videos.insert(tk.END, f' {filename}')
                         listbox_completed_videos.itemconfig(row_index, bg='red')
                         tkinter_window.update()
 
@@ -166,6 +182,9 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
 
                     g_progress.set(calculateProgress(count, totalVideoFiles))
                     tkinter_window.update()
+
+        g_currently_processing.set("N/A")
+        tkinter_window.update()
 
         results_file.flush()
         results_file.close()
@@ -179,11 +198,17 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
         log_file.write(f'ERROR in "inspectVideoFiles" (aka main thread): {e}\n')
         log_file.flush()
 
-def start_program(directory, root, index_start, index_selector_window, log_file):
+def start_program(directory, root, index_start, log_file, label_chosen_directory, label_chosen_directory_var, label_video_count, label_video_count_var, label_index_start, entry_index_input, label_explanation, button_start, listbox_completed_videos):
     try:
-        # GUI
-        index_selector_window.withdraw()
-        root.deiconify()
+        label_chosen_directory.destroy()
+        label_chosen_directory_var.destroy()
+        label_video_count.destroy()
+        label_video_count_var.destroy()
+        label_index_start.destroy()
+        entry_index_input.destroy()
+        label_explanation.destroy()
+        button_start.destroy()
+        listbox_completed_videos.destroy()
 
         label_progress_text = tk.Label(root, text="Progress:", font=('Helvetica Bold', 18))
         label_progress_text.pack(fill=tk.X, pady=10)
@@ -204,18 +229,88 @@ def start_program(directory, root, index_start, index_selector_window, log_file)
         label_currently_processing_var.pack(fill=tk.X, pady=(0, 10))
 
         listbox_completed_videos = tk.Listbox(root, font=('Helvetica', 16))
-        listbox_completed_videos.pack(expand=True, fill=tk.BOTH, side=tk.LEFT)
-
-        scrollbar = tk.Scrollbar(root)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.BOTH)
-        listbox_completed_videos.config(yscrollcommand=scrollbar.set)
-        scrollbar.config(command=listbox_completed_videos.yview)
+        listbox_completed_videos.pack(expand=True, fill=tk.BOTH, side=tk.LEFT, padx=10, pady=10)
+        listbox_completed_videos.bind('<<ListboxSelect>>', lambda e: "break")
+        listbox_completed_videos.bind('<Button-1>', lambda e: "break")
+        listbox_completed_videos.bind('<Button-2>', lambda e: "break")
+        listbox_completed_videos.bind('<Button-3>', lambda e: "break")
+        listbox_completed_videos.bind('<ButtonRelease-1>', lambda e: "break")
+        listbox_completed_videos.bind('<Double-1>', lambda e: "break")
+        listbox_completed_videos.bind('<Double-Button-1>', lambda e: "break")
+        listbox_completed_videos.bind('<B1-Motion>', lambda e: "break")
 
         thread = Thread(target=inspectVideoFiles, args=(directory, root, listbox_completed_videos, index_start, log_file))
         thread.start()
     except Exception as e:
         log_file.write(f'ERROR in "start_program": {e}\n\n')
         log_file.flush()
+
+def afterDirectoryChosen(root, directory):
+    # Log file
+    log_file_path = os.path.join(directory, '_Logs.log')
+    log_file_exists = os.path.isfile(log_file_path)
+    if log_file_exists:
+        os.remove(log_file_path)
+    log_file = open(log_file_path, 'a', encoding="utf8")
+
+    totalVideos = countAllVideoFiles(directory)
+
+    label_chosen_directory = tk.Label(root, text="Chosen directory:", font=('Helvetica Bold', 18))
+    label_chosen_directory.pack(fill=tk.X, pady=5)
+    label_chosen_directory_var = tk.Label(root, wraplength=450, text=f"{directory}", font=('Helvetica', 14))
+    label_chosen_directory_var.pack(fill=tk.X, pady=(5, 20))
+
+    label_video_count = tk.Label(root, text="Total number of videos found:", font=('Helvetica Bold', 18))
+    label_video_count.pack(fill=tk.X, pady=5)
+    label_video_count_var = tk.Label(root, text=f"{totalVideos}", font=('Helvetica', 16))
+    label_video_count_var.pack(fill=tk.X, pady=(5, 20))
+
+    listbox_videos_found_with_index = tk.Listbox(root, font=('Helvetica', 16), width=480)
+    listbox_videos_found_with_index.pack(padx=10)
+    listbox_videos_found_with_index.bind('<<ListboxSelect>>', lambda e: "break")
+    listbox_videos_found_with_index.bind('<Button-1>', lambda e: "break")
+    listbox_videos_found_with_index.bind('<Button-2>', lambda e: "break")
+    listbox_videos_found_with_index.bind('<Button-3>', lambda e: "break")
+    listbox_videos_found_with_index.bind('<ButtonRelease-1>', lambda e: "break")
+    listbox_videos_found_with_index.bind('<Double-1>', lambda e: "break")
+    listbox_videos_found_with_index.bind('<Double-Button-1>', lambda e: "break")
+    listbox_videos_found_with_index.bind('<B1-Motion>', lambda e: "break")
+
+    all_videos_found = getAllVideoFiles(directory)
+    for video in all_videos_found:
+        listbox_videos_found_with_index.insert(tk.END, video)
+    root.update()
+
+    label_index_start = tk.Label(root,
+                                 text=f"Start at video index (1 - {countAllVideoFiles(directory)}):",
+                                 font=('Helvetica Bold', 18))
+    label_index_start.pack(fill=tk.X, pady=5)
+
+    entry_index_input = tk.Entry(root, width=50)
+    entry_index_input.focus_set()
+    entry_index_input.insert(tk.END, '1')
+    entry_index_input.pack(fill=tk.X, padx=200)
+
+    label_explanation = tk.Label(root, wraplength=450,
+                                 text="The default is '1'. Set index to '1' if you want to start from the beginning and process all videos. If you are resuming a previous operation, then set the index to the desired number. Also note, each run will overwrite the _Logs and _Results files.",
+                                 font=('Helvetica Italic', 12))
+    label_explanation.pack(fill=tk.X, pady=5, padx=20)
+
+    if totalVideos > 0:
+        button_start = tk.Button(root, text="Start Inspecting", width=25, command=lambda: start_program(directory, root, int(entry_index_input.get()), log_file, label_chosen_directory, label_chosen_directory_var, label_video_count, label_video_count_var, label_index_start, entry_index_input, label_explanation, button_start, listbox_videos_found_with_index))
+        button_start.pack(pady=20)
+    else:
+        root.withdraw()
+        error_window = tk.Toplevel(root)
+        error_window.resizable(False, False)
+        error_window.geometry("400x200")
+        error_window.title("Error")
+
+        label_error_msg = tk.Label(error_window, width=375, text="No video files found in selected directory!", font=('Helvetica', 14))
+        label_error_msg.pack(fill=tk.X, pady=20)
+
+        button_exit = tk.Button(error_window, text="Exit", width=30, command=lambda: exit())
+        button_exit.pack()
 
 # ========================= MAIN ==========================
 
@@ -224,8 +319,8 @@ if isLinuxOs():
     exit()
 
 root = tk.Tk()
-root.resizable(False, False)
-root.geometry("400x500")
+#root.resizable(False, False)
+root.geometry("500x600")
 root.title("Corrupt Video Inspector")
 if isWindowsOs():
     icon_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'icon.ico'))
@@ -234,34 +329,10 @@ g_progress = tk.StringVar()
 g_count = tk.StringVar()
 g_currently_processing = tk.StringVar()
 
-directory = selectDirectory(root)
+label_select_directory = tk.Label(root, wraplength=450, justify="left", text="Select a directory to search for all video files within the chosen directory and all of its containing subdirectories", font=('Helvetica', 16))
+label_select_directory.pack(fill=tk.X, pady=5, padx=20)
 
-# Log file
-log_file_path = os.path.join(directory, '_Logs.log')
-log_file_exists = os.path.isfile(log_file_path)
-if log_file_exists:
-    os.remove(log_file_path)
-log_file = open(log_file_path, 'a', encoding="utf8")
-
-totalVideos = countAllVideoFiles(directory)
-
-index_selector_window = tk.Toplevel(root)
-index_selector_window.resizable(False, False)
-index_selector_window.geometry("300x400")
-index_selector_window.title("Corrupt Video Inspector")
-label_video_count = tk.Label(index_selector_window, text="Total number of videos:", font=('Helvetica Bold', 18))
-label_video_count.pack(fill=tk.X, pady=5)
-label_video_count_var = tk.Label(index_selector_window, text=f"{totalVideos}", font=('Helvetica', 16))
-label_video_count_var.pack(fill=tk.X, pady=(5, 20))
-label_index_start = tk.Label(index_selector_window, text=f"Start at video index (1 - {countAllVideoFiles(directory)}):", font=('Helvetica Bold', 18))
-label_index_start.pack(fill=tk.X, pady=5)
-entry_index_input = tk.Entry(index_selector_window, width=50)
-entry_index_input.focus_set()
-entry_index_input.insert(tk.END, '1')
-entry_index_input.pack(fill=tk.X, padx=40)
-label_explanation = tk.Label(index_selector_window, wraplength=250, text="The default is '1'. Set index to '1' if you want to start from the beginning and process all videos. If you are resuming a previous operation, then set the index to the desired number. Also note, each run will overwrite the _Logs and _Results files.", font=('Helvetica Italic', 12))
-label_explanation.pack(fill=tk.X, pady=5, padx=20)
-button_start = tk.Button(index_selector_window, text="Start", width=20, command=lambda : start_program(directory, root, int(entry_index_input.get()), index_selector_window, log_file))
-button_start.pack(pady=20)
+button_select_directory = tk.Button(root, text="Select Directory", width=20, command=lambda: selectDirectory(root, label_select_directory, button_select_directory))
+button_select_directory.pack(pady=20)
 
 root.mainloop()
