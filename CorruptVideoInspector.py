@@ -35,7 +35,7 @@ def countAllVideoFiles(dir):
     total = 0
     for root, dirs, files in os.walk(dir):
         for file in files:
-            if file.endswith(tuple(VIDEO_EXTENSIONS)):
+            if file.lower().endswith(tuple(VIDEO_EXTENSIONS)):
                 total += 1
     return total
 
@@ -90,7 +90,7 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
         count = 0
         for root, dirs, files in os.walk(directory):
             for filename in files:
-                if filename.endswith(tuple(VIDEO_EXTENSIONS)):
+                if filename.lower().endswith(tuple(VIDEO_EXTENSIONS)):
                     if (index_start > count + 1):
                         count += 1
                         continue
