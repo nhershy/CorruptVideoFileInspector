@@ -319,10 +319,11 @@ if isLinuxOs():
     exit()
 
 root = tk.Tk()
-#root.resizable(False, False)
-root.geometry("500x600")
 root.title("Corrupt Video Inspector")
+if isMacOs():
+    root.geometry("500x600")
 if isWindowsOs():
+    root.geometry("500x700")
     icon_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'icon.ico'))
     root.iconbitmap(default=icon_path)
 g_progress = tk.StringVar()
