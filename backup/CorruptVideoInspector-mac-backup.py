@@ -1,9 +1,10 @@
 import csv
 import os
 import subprocess
+import sys
 import tkinter as tk
 import shlex
-import platform
+import traceback
 from threading import Thread
 from tkinter import filedialog
 from datetime import datetime
@@ -11,21 +12,6 @@ from datetime import datetime
 VIDEO_EXTENSIONS = ['.mp4', '.avi', '.mov', '.wmv', '.mkv', '.flv', '.webm', '.m4v', '.m4p', '.mpeg', '.mpg', '.3gp', '.3g2']
 
 # ========================= FUNCTIONS ==========================
-
-def isMacOs():
-    if 'Darwin' in platform.system():
-        return True
-    return False
-
-def isWindowsOs():
-    if 'Windows' in platform.system():
-        return True
-    return False
-
-def isLinuxOs():
-    if 'Linux' in platform.system():
-        return True
-    return False
 
 def selectDirectory(root):
     root.withdraw()
@@ -38,6 +24,7 @@ def countAllVideoFiles(dir):
             if file.endswith(tuple(VIDEO_EXTENSIONS)):
                 total += 1
     return total
+
 
 def estimatedTime(total_videos):
     # estimating 3 mins per 2GB video file, on average
@@ -113,34 +100,22 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
 
                     abs_file_path = os.path.join(root, filename)
 
-                    proc = ''
-                    if isMacOs():
-                        proc = subprocess.Popen(f'./ffmpeg -v error -i {shlex.quote(abs_file_path)} -f null - 2>&1', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                    elif isWindowsOs():
-                        ffmpeg_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'ffmpeg.exe'))
-                        proc = subprocess.Popen(f'"{ffmpeg_path}" -v error -i "{abs_file_path}" -f null error.log', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                    else:
-                        # Linux not yet supported
-                        exit()
+                    proc = subprocess.Popen(f'./ffmpeg -v error -i {shlex.quote(abs_file_path)} -f null - 2>&1', shell=True,
+                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
                     output, error = proc.communicate()
 
-                    # Debug
-                    print(f'output= {output}\n')
-                    print(f'error= {error}\n')
+                    # if proc.returncode != 0:
+                    #     log_file.write(f'Output of "ffmpeg": {output}\n')
+                    #     log_file.write(f'ERROR in "ffmpeg": {error}\n')
+                    #     log_file.flush()
 
                     row_index = count
                     if (index_start != 1):
                         row_index = (count + 1) - index_start
 
-                    ffmpeg_result = ''
-                    if isMacOs():
-                        ffmpeg_result = output
-                    elif isWindowsOs():
-                        ffmpeg_result = error
-
                     row = ''
-                    if not ffmpeg_result:
+                    if not output:
                         # Healthy
                         print("\033[92m{0}\033[00m".format("  HEALTHY -> {}".format(filename)), end='\n')  # red
                         log_file.write(f'  HEALTHY -> {filename}\n')
@@ -219,17 +194,10 @@ def start_program(directory, root, index_start, index_selector_window, log_file)
 
 # ========================= MAIN ==========================
 
-if isLinuxOs():
-    # Linux not yet supported
-    exit()
-
 root = tk.Tk()
 root.resizable(False, False)
 root.geometry("400x500")
 root.title("Corrupt Video Inspector")
-if isWindowsOs():
-    icon_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'icon.ico'))
-    root.iconbitmap(default=icon_path)
 g_progress = tk.StringVar()
 g_count = tk.StringVar()
 g_currently_processing = tk.StringVar()
