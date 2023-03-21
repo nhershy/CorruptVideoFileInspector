@@ -62,20 +62,28 @@ def verify_ffmpeg_still_running(root):
     ffmpeg_window.geometry("400x150")
     ffmpeg_window.title("Verifying ffmpeg still running")
     output = ''
+    cpu_usage = ''
 
     if isMacOs():
         proc = subprocess.Popen("ps -Ao comm,pcpu -r | head -n 10 | grep ffmpeg", shell=True, stdout=subprocess.PIPE)
         output = proc.communicate()[0].decode('utf-8').strip()
-
         if "ffmpeg" in output:
             cpu_usage = output.split()[1]
             output = f"ffmpeg is currently running.\nffmpeg is currently using {cpu_usage}% of CPU"
         else:
-            output = "ERROR: ffmpeg is NOT currently running.\nPlease manually stop this program and try again."
+            output = "ffmpeg is NOT currently running!"
     if isWindowsOs():
-        print("TODO")
-        #process_names = [proc.name() for proc in psutil.process_iter()]
-
+        found = False
+        process_names = [proc for proc in psutil.process_iter()]
+        for proc in process_names:
+            if "ffmpeg" in proc.name():
+                cpu_usage = proc.cpu_percent()
+                found = True
+                break
+        if found:
+            output = f"ffmpeg is currently running.\nffmpeg is currently using {cpu_usage}% of CPU"
+        else:
+            output = "ffmpeg is NOT currently running!"
 
     label_ffmpeg_result = tk.Label(ffmpeg_window, width=375, text=output, font=('Helvetica', 14))
     label_ffmpeg_result.pack(fill=tk.X, pady=20)
@@ -95,7 +103,7 @@ def estimatedTime(total_videos):
 def calculateProgress(count, total):
     return "{0}%".format(int((count / total) * 100))
 
-def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index_start, log_file):
+def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index_start, log_file, progress_bar):
     try:
         global g_count
         global g_currently_processing
@@ -209,8 +217,10 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
                     g_progress.set(calculateProgress(count, totalVideoFiles))
                     tkinter_window.update()
 
-        g_count.set(f"0 / {totalVideoFiles}")
+        g_count.set("---")
         g_currently_processing.set("N/A")
+        progress_bar.stop()
+        progress_bar['value'] = 100
         tkinter_window.update()
 
         results_file.flush()
@@ -273,7 +283,7 @@ def start_program(directory, root, index_start, log_file, label_chosen_directory
         button_ffmpeg_verify = tk.Button(root, text="Verify ffmpeg", width=200, command=lambda: verify_ffmpeg_still_running(root))
         button_ffmpeg_verify.pack(pady=10)
 
-        thread = Thread(target=inspectVideoFiles, args=(directory, root, listbox_completed_videos, index_start, log_file))
+        thread = Thread(target=inspectVideoFiles, args=(directory, root, listbox_completed_videos, index_start, log_file, progress_bar))
         thread.start()
     except Exception as e:
         log_file.write(f'ERROR in "start_program": {e}\n\n')
