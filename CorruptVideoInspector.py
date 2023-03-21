@@ -4,8 +4,10 @@ import subprocess
 import tkinter as tk
 import shlex
 import platform
+import psutil
 from threading import Thread
 from tkinter import filedialog
+from tkinter import ttk
 from datetime import datetime
 
 VIDEO_EXTENSIONS = ['.mp4', '.avi', '.mov', '.wmv', '.mkv', '.flv', '.webm', '.m4v', '.m4p', '.mpeg', '.mpg', '.3gp', '.3g2']
@@ -54,6 +56,30 @@ def getAllVideoFiles(dir):
                 index += 1
     return videos_found_list
 
+def verify_ffmpeg_still_running(root):
+    ffmpeg_window = tk.Toplevel(root)
+    ffmpeg_window.resizable(False, False)
+    ffmpeg_window.geometry("400x150")
+    ffmpeg_window.title("Verifying ffmpeg still running")
+    output = ''
+
+    if isMacOs():
+        proc = subprocess.Popen("ps -Ao comm,pcpu -r | head -n 10 | grep ffmpeg", shell=True, stdout=subprocess.PIPE)
+        output = proc.communicate()[0].decode('utf-8').strip()
+
+        if "ffmpeg" in output:
+            cpu_usage = output.split()[1]
+            output = f"ffmpeg is currently running.\nffmpeg is currently using {cpu_usage}% of CPU"
+        else:
+            output = "ERROR: ffmpeg is NOT currently running.\nPlease manually stop this program and try again."
+    if isWindowsOs():
+        print("TODO")
+        #process_names = [proc.name() for proc in psutil.process_iter()]
+
+
+    label_ffmpeg_result = tk.Label(ffmpeg_window, width=375, text=output, font=('Helvetica', 14))
+    label_ffmpeg_result.pack(fill=tk.X, pady=20)
+
 def estimatedTime(total_videos):
     # estimating 3 mins per 2GB video file, on average
     total_minutes = total_videos * 3
@@ -71,6 +97,7 @@ def calculateProgress(count, total):
 
 def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index_start, log_file):
     try:
+        global g_count
         global g_currently_processing
 
         # CSV Results file
@@ -120,7 +147,6 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
                     g_progress.set(calculateProgress(count, totalVideoFiles))
                     tkinter_window.update()
 
-                    global g_count
                     g_count.set(f"{count+1} / {totalVideoFiles}")
                     tkinter_window.update()
 
@@ -183,6 +209,7 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
                     g_progress.set(calculateProgress(count, totalVideoFiles))
                     tkinter_window.update()
 
+        g_count.set(f"0 / {totalVideoFiles}")
         g_currently_processing.set("N/A")
         tkinter_window.update()
 
@@ -217,19 +244,23 @@ def start_program(directory, root, index_start, log_file, label_chosen_directory
         label_progress_var = tk.Label(root, textvariable=g_progress, font=('Helvetica', 50))
         label_progress_var.pack(fill=tk.X, pady=(0, 10))
 
-        g_count.set("0 / 0")
-        label_count_var = tk.Label(root, textvariable=g_count, font=('Helvetica', 16))
-        label_count_var.pack(fill=tk.X, pady=(0, 20))
+        progress_bar = ttk.Progressbar(root, orient="horizontal", mode="indeterminate", length=300)
+        progress_bar.pack(pady=(0, 20))
+        progress_bar.start()
 
         label_currently_processing_text = tk.Label(root, text="Currently Processing:", font=('Helvetica Bold', 18))
         label_currently_processing_text.pack(fill=tk.X, pady=10)
+
+        g_count.set("0 / 0")
+        label_count_var = tk.Label(root, textvariable=g_count, font=('Helvetica', 16))
+        label_count_var.pack(fill=tk.X, pady=(0, 10))
 
         g_currently_processing.set("N/A")
         label_currently_processing_var = tk.Label(root, textvariable=g_currently_processing, font=('Helvetica', 16))
         label_currently_processing_var.pack(fill=tk.X, pady=(0, 10))
 
         listbox_completed_videos = tk.Listbox(root, font=('Helvetica', 16))
-        listbox_completed_videos.pack(expand=True, fill=tk.BOTH, side=tk.LEFT, padx=10, pady=10)
+        listbox_completed_videos.pack(expand=False, fill=tk.BOTH, side=tk.TOP, padx=10, pady=10)
         listbox_completed_videos.bind('<<ListboxSelect>>', lambda e: "break")
         listbox_completed_videos.bind('<Button-1>', lambda e: "break")
         listbox_completed_videos.bind('<Button-2>', lambda e: "break")
@@ -238,6 +269,9 @@ def start_program(directory, root, index_start, log_file, label_chosen_directory
         listbox_completed_videos.bind('<Double-1>', lambda e: "break")
         listbox_completed_videos.bind('<Double-Button-1>', lambda e: "break")
         listbox_completed_videos.bind('<B1-Motion>', lambda e: "break")
+
+        button_ffmpeg_verify = tk.Button(root, text="Verify ffmpeg", width=200, command=lambda: verify_ffmpeg_still_running(root))
+        button_ffmpeg_verify.pack(pady=10)
 
         thread = Thread(target=inspectVideoFiles, args=(directory, root, listbox_completed_videos, index_start, log_file))
         thread.start()
@@ -321,9 +355,9 @@ if isLinuxOs():
 root = tk.Tk()
 root.title("Corrupt Video Inspector")
 if isMacOs():
-    root.geometry("500x600")
+    root.geometry("500x650")
 if isWindowsOs():
-    root.geometry("500x700")
+    root.geometry("500x750")
     icon_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'icon.ico'))
     root.iconbitmap(default=icon_path)
 g_progress = tk.StringVar()
