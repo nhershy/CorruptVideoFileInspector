@@ -50,6 +50,14 @@ def convertTime(seconds):
     seconds %= 60
     return "%d:%02d:%02d" % (hour, minutes, seconds)
 
+def truncateFilename(input):
+    file_name, file_extension = os.path.splitext(input)
+    if len(file_name) > 50:
+        truncated_string = file_name[0:49]
+        return f'{truncated_string}..{file_extension}'
+    else:
+        return input
+
 def countAllVideoFiles(dir):
     total = 0
     for root, dirs, files in os.walk(dir):
@@ -219,7 +227,7 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
                     g_count.set(f"{count+1} / {totalVideoFiles}")
                     tkinter_window.update()
 
-                    g_currently_processing.set(filename)
+                    g_currently_processing.set(truncateFilename(filename))
                     tkinter_window.update()
 
                     abs_file_path = os.path.join(root, filename)
