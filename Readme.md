@@ -24,12 +24,12 @@ This program searches though a selected directory and its subdirectories for all
 
 #### macOS 
 <p align="center">
-  <img src="assets/demo2.jpeg" />
+  <img src="assets/demo-mac.jpg" />
 </p>
 
 #### Windows OS
 <p align="center">
-  <img src="assets/demo-win.png" />
+  <img src="assets/demo-windows.png" />
 </p>
 
 ### Technical references
