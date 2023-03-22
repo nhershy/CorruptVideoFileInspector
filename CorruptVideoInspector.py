@@ -6,6 +6,7 @@ import shlex
 import platform
 import psutil
 import signal
+import time
 from threading import Thread
 from tkinter import filedialog
 from tkinter import ttk
@@ -40,6 +41,15 @@ def selectDirectory(root, label_select_directory, button_select_directory):
         button_select_directory.destroy()
         afterDirectoryChosen(root, directory)
 
+
+def convertTime(seconds):
+    seconds = seconds % (24 * 3600)
+    hour = seconds // 3600
+    seconds %= 3600
+    minutes = seconds // 60
+    seconds %= 60
+    return "%d:%02d:%02d" % (hour, minutes, seconds)
+
 def countAllVideoFiles(dir):
     total = 0
     for root, dirs, files in os.walk(dir):
@@ -58,6 +68,14 @@ def getAllVideoFiles(dir):
                 index += 1
     return videos_found_list
 
+def windowsFfmpegCpuCalculationPrimer():
+    # https://psutil.readthedocs.io/en/latest/#psutil.cpu_percent
+    # https://stackoverflow.com/questions/24367424/cpu-percentinterval-none-always-returns-0-regardless-of-interval-value-python
+    process_names = [proc for proc in psutil.process_iter()]
+    for proc in process_names:
+        if "ffmpeg" in proc.name():
+            cpu_usage = proc.cpu_percent()
+
 def verify_ffmpeg_still_running(root):
     ffmpeg_window = tk.Toplevel(root)
     ffmpeg_window.resizable(False, False)
@@ -75,6 +93,7 @@ def verify_ffmpeg_still_running(root):
         else:
             output = "ffmpeg is NOT currently running!"
     if isWindowsOs():
+        windowsFfmpegCpuCalculationPrimer()
         found = False
         process_names = [proc for proc in psutil.process_iter()]
         for proc in process_names:
@@ -90,10 +109,13 @@ def verify_ffmpeg_still_running(root):
     label_ffmpeg_result = tk.Label(ffmpeg_window, width=375, text=output, font=('Helvetica', 14))
     label_ffmpeg_result.pack(fill=tk.X, pady=20)
 
-def kill_ffmpeg_warning(root):
+def kill_ffmpeg_warning(root, log_file):
     ffmpeg_kill_window = tk.Toplevel(root)
     ffmpeg_kill_window.resizable(False, False)
-    ffmpeg_kill_window.geometry("400x300")
+    if isMacOs():
+        ffmpeg_kill_window.geometry("400x300")
+    elif isWindowsOs():
+        ffmpeg_kill_window.geometry("400x400")
     ffmpeg_kill_window.title("Safely Quit Program")
 
     label_ffmpeg_kill = tk.Label(ffmpeg_kill_window, wraplength=375, width=375, text="This application spawns a subprocess named 'ffmpeg'. If this program is quit using the 'X' button, for example, the 'ffmpeg' subprocess will continue to run in the background of the host computer, draining the CPU resources. Clicking the button below will terminate the 'ffmpeg' subprocess and safely quit the application. This will prematurely end all video processing. Only do this if you want to safely exit the program and clean all subprocesses", font=('Helvetica', 14))
@@ -101,19 +123,35 @@ def kill_ffmpeg_warning(root):
 
     if isMacOs():
         # https://stackoverflow.com/questions/1529847/how-to-change-the-foreground-or-background-colour-of-a-tkinter-button-on-mac-os
-        button_kill_ffmpeg = MacButton(ffmpeg_kill_window, background='#E34234', borderless=1, foreground='white', text="Terminate Program", width=500, command=lambda: kill_ffmpeg(root))
+        button_kill_ffmpeg = MacButton(ffmpeg_kill_window, background='#E34234', borderless=1, foreground='white', text="Terminate Program", width=500, command=lambda: kill_ffmpeg(root, log_file))
         button_kill_ffmpeg.pack(pady=10)
     elif isWindowsOs():
-        button_kill_ffmpeg = tk.Button(ffmpeg_kill_window, background='#E34234', foreground='white', text="Terminate Program", width=200, command=lambda: kill_ffmpeg(root))
+        button_kill_ffmpeg = tk.Button(ffmpeg_kill_window, background='#E34234', foreground='white', text="Terminate Program", width=200, command=lambda: kill_ffmpeg(root, log_file))
         button_kill_ffmpeg.pack(pady=10)
 
-def kill_ffmpeg(root):
+def kill_ffmpeg(root, log_file):
     if isMacOs():
-        global g_mac_pid
-        os.killpg(os.getpgid(g_mac_pid), signal.SIGTERM)
+        try:
+            global g_mac_pid
+            log_file.write(f'---USER MANUALLY TERMINATED PROGRAM---\n')
+            os.killpg(os.getpgid(g_mac_pid), signal.SIGTERM)
+        except Exception as e:
+            log_file.write(f'ERROR in "kill_ffmpeg": {e}\n')
+            log_file.flush()
     elif isWindowsOs():
-        global g_windows_pid
-        os.kill(g_windows_pid, signal.CTRL_C_EVENT)
+        try:
+            global g_windows_pid
+            # os.kill(g_windows_pid, signal.CTRL_C_EVENT)
+            # subprocess.Popen("taskkill /F /T /PID %i" % g_windows_pid, shell=True)
+            log_file.write(f'---USER MANUALLY TERMINATED PROGRAM---\n')
+            for proc in psutil.process_iter():
+                if proc.name() == "ffmpeg.exe" or proc.name() == "CorruptVideoInspector.exe":
+                    proc.kill()
+            log_file.flush()
+        except Exception as e:
+            log_file.write(f'ERROR in "kill_ffmpeg": {e}\n')
+            log_file.flush()
+
 
 def estimatedTime(total_videos):
     # estimating 3 mins per 2GB video file, on average
@@ -135,6 +173,11 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
         global g_count
         global g_currently_processing
 
+        log_file.write('CREATED: _Logs.log\n')
+        log_file.write('CREATED: _Results.csv\n')
+        log_file.write('=================================================================\n')
+        log_file.flush()
+
         # CSV Results file
         results_file_path = os.path.join(directory, '_Results.csv')
         results_file_exists = os.path.isfile(results_file_path)
@@ -148,22 +191,15 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
         results_file_writer.writerow(header)
         results_file.flush()
 
-        # Information
-        print('CORRUPT VIDEO FILE INSPECTOR')
-        print('')
-        log_file.write('CORRUPT VIDEO FILE INSPECTOR\n\n')
-
         totalVideoFiles = countAllVideoFiles(directory)
-
-        print(f'Total video files to inspect: {totalVideoFiles}')
-        print(f'Starting from video index: {index_start}')
-        log_file.write(f'Total video files to inspect: {totalVideoFiles}\n')
-        log_file.write(f'Starting from video index: {index_start}\n')
-
         start_time = datetime.now().strftime('%Y-%m-%d %I:%M %p')
-        print(f'Started: {start_time}')
-        print('')
-        log_file.write(f'Started: {start_time}\n\n')
+
+        log_file.write(f'DIRECTORY: {directory}\n')
+        log_file.write(f'TOTAL VIDEO FILES FOUND: {totalVideoFiles}\n')
+        log_file.write(f'STARTING FROM VIDEO INDEX: {index_start}\n')
+        log_file.write(f'START TIME: {start_time}\n')
+        log_file.write('=================================================================\n')
+        log_file.write('(DURATION IS IN HOURS:MINUTES:SECONDS)\n')
         log_file.flush()
 
         count = 0
@@ -174,9 +210,7 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
                         count += 1
                         continue
 
-                    print(f'PROCESSING: {filename}...')
-                    log_file.write(f'PROCESSING: {filename}\n')
-                    log_file.flush()
+                    start_time = time.time()
 
                     global g_progress
                     g_progress.set(calculateProgress(count, totalVideoFiles))
@@ -220,21 +254,33 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
                     elif isWindowsOs():
                         ffmpeg_result = error
 
+                    elapsed_time = time.time() - start_time
+                    readable_time = convertTime(elapsed_time)
                     row = ''
                     if not ffmpeg_result:
                         # Healthy
-                        print("\033[92m{0}\033[00m".format("  HEALTHY -> {}".format(filename)), end='\n')  # red
-                        log_file.write(f'  HEALTHY -> {filename}\n')
+                        print("\033[92m{0}\033[00m".format("HEALTHY -> {}".format(filename)), end='\n')  # red
+
+                        log_file.write('=================================================================\n')
+                        log_file.write(f'{filename}\n')
+                        log_file.write('STATUS: ✓ HEALTHY ✓\n')
+                        log_file.write(f'DURATION: {readable_time}\n')
                         log_file.flush()
+
                         row = [filename, 0]
                         listbox_completed_videos.insert(tk.END, f' {filename}')
                         listbox_completed_videos.itemconfig(row_index, bg='green')
                         tkinter_window.update()
                     else:
                         # Corrupt
-                        print("\033[31m{0}\033[00m".format("  CORRUPTED -> {}".format(filename)), end='\n')  # red
-                        log_file.write(f'  CORRUPTED -> {filename}\n')
+                        print("\033[31m{0}\033[00m".format("CORRUPTED -> {}".format(filename)), end='\n')  # red
+
+                        log_file.write('=================================================================\n')
+                        log_file.write(f'{filename}\n')
+                        log_file.write('STATUS: X CORRUPT X\n')
+                        log_file.write(f'DURATION: {readable_time}\n')
                         log_file.flush()
+
                         row = [filename, 1]
                         listbox_completed_videos.insert(tk.END, f' {filename}')
                         listbox_completed_videos.itemconfig(row_index, bg='red')
@@ -258,8 +304,12 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
         results_file.close()
 
         end_time = datetime.now().strftime('%Y-%m-%d %I:%M %p')
+
         print(f'Finished: {end_time}')
-        log_file.write(f'Ended: {end_time}\n\n')
+        log_file.write('=================================================================\n')
+        log_file.write(f'SUCCESSFULLY PROCESSED {(totalVideoFiles + 1) - index_start} VIDEO FILES\n')
+        log_file.write(f'END TIME: {end_time}\n')
+        log_file.write('=================================================================\n')
         log_file.flush()
         log_file.close()
     except Exception as e:
@@ -316,16 +366,16 @@ def start_program(directory, root, index_start, log_file, label_chosen_directory
 
         if isMacOs():
             # https://stackoverflow.com/questions/1529847/how-to-change-the-foreground-or-background-colour-of-a-tkinter-button-on-mac-os
-            button_kill_ffmpeg = MacButton(root, background='#E34234', borderless=1, foreground='white', text="Safely Quit", width=500, command=lambda: kill_ffmpeg_warning(root))
+            button_kill_ffmpeg = MacButton(root, background='#E34234', borderless=1, foreground='white', text="Safely Quit", width=500, command=lambda: kill_ffmpeg_warning(root, log_file))
             button_kill_ffmpeg.pack(pady=10)
         elif isWindowsOs():
-            button_kill_ffmpeg = tk.Button(root, background='#E34234', foreground='white', text="Safely Quit", width=200, command=lambda: kill_ffmpeg_warning(root))
+            button_kill_ffmpeg = tk.Button(root, background='#E34234', foreground='white', text="Safely Quit", width=200, command=lambda: kill_ffmpeg_warning(root, log_file))
             button_kill_ffmpeg.pack(pady=10)
 
         thread = Thread(target=inspectVideoFiles, args=(directory, root, listbox_completed_videos, index_start, log_file, progress_bar))
         thread.start()
     except Exception as e:
-        log_file.write(f'ERROR in "start_program": {e}\n\n')
+        log_file.write(f'ERROR in "start_program": {e}\n')
         log_file.flush()
 
 def afterDirectoryChosen(root, directory):
@@ -335,6 +385,14 @@ def afterDirectoryChosen(root, directory):
     if log_file_exists:
         os.remove(log_file_path)
     log_file = open(log_file_path, 'a', encoding="utf8")
+
+    # Logging
+    print('CORRUPT VIDEO FILE INSPECTOR')
+    print('')
+    log_file.write('=================================================================\n')
+    log_file.write('                CORRUPT VIDEO FILE INSPECTOR\n')
+    log_file.write('=================================================================\n')
+    log_file.flush()
 
     totalVideos = countAllVideoFiles(directory)
 
@@ -416,7 +474,7 @@ g_mac_pid = ''
 g_windows_pid = ''
 
 label_select_directory = tk.Label(root, wraplength=450, justify="left", text="Select a directory to search for all video files within the chosen directory and all of its containing subdirectories", font=('Helvetica', 16))
-label_select_directory.pack(fill=tk.X, pady=5, padx=20)
+label_select_directory.pack(fill=tk.X, pady=20, padx=20)
 
 button_select_directory = tk.Button(root, text="Select Directory", width=20, command=lambda: selectDirectory(root, label_select_directory, button_select_directory))
 button_select_directory.pack(pady=20)
