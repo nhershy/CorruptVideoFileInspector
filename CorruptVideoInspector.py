@@ -5,9 +5,11 @@ import tkinter as tk
 import shlex
 import platform
 import psutil
+import signal
 from threading import Thread
 from tkinter import filedialog
 from tkinter import ttk
+from tkmacosx import Button as MacButton
 from datetime import datetime
 
 VIDEO_EXTENSIONS = ['.mp4', '.avi', '.mov', '.wmv', '.mkv', '.flv', '.webm', '.m4v', '.m4p', '.mpeg', '.mpg', '.3gp', '.3g2']
@@ -60,7 +62,7 @@ def verify_ffmpeg_still_running(root):
     ffmpeg_window = tk.Toplevel(root)
     ffmpeg_window.resizable(False, False)
     ffmpeg_window.geometry("400x150")
-    ffmpeg_window.title("Verifying ffmpeg still running")
+    ffmpeg_window.title("Verify ffmpeg Status")
     output = ''
     cpu_usage = ''
 
@@ -87,6 +89,31 @@ def verify_ffmpeg_still_running(root):
 
     label_ffmpeg_result = tk.Label(ffmpeg_window, width=375, text=output, font=('Helvetica', 14))
     label_ffmpeg_result.pack(fill=tk.X, pady=20)
+
+def kill_ffmpeg_warning(root):
+    ffmpeg_kill_window = tk.Toplevel(root)
+    ffmpeg_kill_window.resizable(False, False)
+    ffmpeg_kill_window.geometry("400x300")
+    ffmpeg_kill_window.title("Safely Quit Program")
+
+    label_ffmpeg_kill = tk.Label(ffmpeg_kill_window, wraplength=375, width=375, text="This application spawns a subprocess named 'ffmpeg'. If this program is quit using the 'X' button, for example, the 'ffmpeg' subprocess will continue to run in the background of the host computer, draining the CPU resources. Clicking the button below will terminate the 'ffmpeg' subprocess and safely quit the application. This will prematurely end all video processing. Only do this if you want to safely exit the program and clean all subprocesses", font=('Helvetica', 14))
+    label_ffmpeg_kill.pack(fill=tk.X, pady=20)
+
+    if isMacOs():
+        # https://stackoverflow.com/questions/1529847/how-to-change-the-foreground-or-background-colour-of-a-tkinter-button-on-mac-os
+        button_kill_ffmpeg = MacButton(ffmpeg_kill_window, background='#E34234', borderless=1, foreground='white', text="Terminate Program", width=500, command=lambda: kill_ffmpeg(root))
+        button_kill_ffmpeg.pack(pady=10)
+    elif isWindowsOs():
+        button_kill_ffmpeg = tk.Button(ffmpeg_kill_window, background='#E34234', foreground='white', text="Terminate Program", width=200, command=lambda: kill_ffmpeg(root))
+        button_kill_ffmpeg.pack(pady=10)
+
+def kill_ffmpeg(root):
+    if isMacOs():
+        global g_mac_pid
+        os.killpg(os.getpgid(g_mac_pid), signal.SIGTERM)
+    elif isWindowsOs():
+        global g_windows_pid
+        os.kill(g_windows_pid, signal.CTRL_C_EVENT)
 
 def estimatedTime(total_videos):
     # estimating 3 mins per 2GB video file, on average
@@ -165,10 +192,14 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
 
                     proc = ''
                     if isMacOs():
+                        global g_mac_pid
                         proc = subprocess.Popen(f'./ffmpeg -v error -i {shlex.quote(abs_file_path)} -f null - 2>&1', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                        g_mac_pid = proc.pid
                     elif isWindowsOs():
+                        global g_windows_pid
                         ffmpeg_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'ffmpeg.exe'))
                         proc = subprocess.Popen(f'"{ffmpeg_path}" -v error -i "{abs_file_path}" -f null error.log', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                        g_windows_pid = proc.pid
                     else:
                         # Linux not yet supported
                         exit()
@@ -280,8 +311,16 @@ def start_program(directory, root, index_start, log_file, label_chosen_directory
         listbox_completed_videos.bind('<Double-Button-1>', lambda e: "break")
         listbox_completed_videos.bind('<B1-Motion>', lambda e: "break")
 
-        button_ffmpeg_verify = tk.Button(root, text="Verify ffmpeg", width=200, command=lambda: verify_ffmpeg_still_running(root))
+        button_ffmpeg_verify = tk.Button(root, text="ffmpeg Status", width=200, command=lambda: verify_ffmpeg_still_running(root))
         button_ffmpeg_verify.pack(pady=10)
+
+        if isMacOs():
+            # https://stackoverflow.com/questions/1529847/how-to-change-the-foreground-or-background-colour-of-a-tkinter-button-on-mac-os
+            button_kill_ffmpeg = MacButton(root, background='#E34234', borderless=1, foreground='white', text="Safely Quit", width=500, command=lambda: kill_ffmpeg_warning(root))
+            button_kill_ffmpeg.pack(pady=10)
+        elif isWindowsOs():
+            button_kill_ffmpeg = tk.Button(root, background='#E34234', foreground='white', text="Safely Quit", width=200, command=lambda: kill_ffmpeg_warning(root))
+            button_kill_ffmpeg.pack(pady=10)
 
         thread = Thread(target=inspectVideoFiles, args=(directory, root, listbox_completed_videos, index_start, log_file, progress_bar))
         thread.start()
@@ -373,6 +412,8 @@ if isWindowsOs():
 g_progress = tk.StringVar()
 g_count = tk.StringVar()
 g_currently_processing = tk.StringVar()
+g_mac_pid = ''
+g_windows_pid = ''
 
 label_select_directory = tk.Label(root, wraplength=450, justify="left", text="Select a directory to search for all video files within the chosen directory and all of its containing subdirectories", font=('Helvetica', 16))
 label_select_directory.pack(fill=tk.X, pady=5, padx=20)
