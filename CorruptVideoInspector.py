@@ -52,8 +52,11 @@ def convertTime(seconds):
 
 def truncateFilename(input):
     file_name, file_extension = os.path.splitext(input)
-    if len(file_name) > 50:
+    if isMacOs() and len(file_name) > 50:
         truncated_string = file_name[0:49]
+        return f'{truncated_string}..{file_extension}'
+    elif isWindowsOs() and len(file_name) > 42:
+        truncated_string = file_name[0:41]
         return f'{truncated_string}..{file_extension}'
     else:
         return input
