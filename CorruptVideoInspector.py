@@ -15,6 +15,13 @@ from datetime import datetime
 
 VIDEO_EXTENSIONS = ['.mp4', '.avi', '.mov', '.wmv', '.mkv', '.flv', '.webm', '.m4v', '.m4p', '.mpeg', '.mpg', '.3gp', '.3g2']
 
+# ========================== CLASSES ===========================
+
+class VideoObject():
+    def __init__(self, filename, full_filepath):
+        self.filename = filename
+        self.full_filepath = full_filepath
+
 # ========================= FUNCTIONS ==========================
 
 def isMacOs():
@@ -70,14 +77,18 @@ def countAllVideoFiles(dir):
     return total
 
 def getAllVideoFiles(dir):
-    index = 1
     videos_found_list = []
     for root, dirs, files in os.walk(dir):
         for file in files:
             if file.lower().endswith(tuple(VIDEO_EXTENSIONS)):
-                videos_found_list.append(f' {index}:  {file}')
-                index += 1
-    return videos_found_list
+                videos_found_list.append(file)
+    videos_found_list.sort()
+    index = 1
+    sorted_videos_list = []
+    for video in videos_found_list:
+        sorted_videos_list.append(f' {index}:  {video}')
+        index += 1
+    return sorted_videos_list
 
 def windowsFfmpegCpuCalculationPrimer():
     # https://psutil.readthedocs.io/en/latest/#psutil.cpu_percent
@@ -214,96 +225,103 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
         log_file.flush()
 
         count = 0
+        all_videos_found = []
         for root, dirs, files in os.walk(directory):
             for filename in files:
                 if filename.lower().endswith(tuple(VIDEO_EXTENSIONS)):
                     if (index_start > count + 1):
                         count += 1
                         continue
+                    video_obj = VideoObject(filename, os.path.join(root, filename))
+                    all_videos_found.append(video_obj)
 
-                    start_time = time.time()
+        # Alphabetize list
+        all_videos_found.sort(key=lambda x: x.filename)
 
-                    global g_progress
-                    g_progress.set(calculateProgress(count, totalVideoFiles))
-                    tkinter_window.update()
+        for video in all_videos_found:
+            start_time = time.time()
 
-                    g_count.set(f"{count+1} / {totalVideoFiles}")
-                    tkinter_window.update()
+            global g_progress
+            g_progress.set(calculateProgress(count, totalVideoFiles))
+            tkinter_window.update()
 
-                    g_currently_processing.set(truncateFilename(filename))
-                    tkinter_window.update()
+            g_count.set(f"{count + 1} / {totalVideoFiles}")
+            tkinter_window.update()
 
-                    abs_file_path = os.path.join(root, filename)
+            g_currently_processing.set(truncateFilename(video.filename))
+            tkinter_window.update()
 
-                    proc = ''
-                    if isMacOs():
-                        global g_mac_pid
-                        proc = subprocess.Popen(f'./ffmpeg -v error -i {shlex.quote(abs_file_path)} -f null - 2>&1', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                        g_mac_pid = proc.pid
-                    elif isWindowsOs():
-                        global g_windows_pid
-                        ffmpeg_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'ffmpeg.exe'))
-                        proc = subprocess.Popen(f'"{ffmpeg_path}" -v error -i "{abs_file_path}" -f null error.log', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                        g_windows_pid = proc.pid
-                    else:
-                        # Linux not yet supported
-                        exit()
+            proc = ''
+            if isMacOs():
+                global g_mac_pid
+                proc = subprocess.Popen(f'./ffmpeg -v error -i {shlex.quote(video.full_filepath)} -f null - 2>&1', shell=True,
+                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                g_mac_pid = proc.pid
+            elif isWindowsOs():
+                global g_windows_pid
+                ffmpeg_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'ffmpeg.exe'))
+                proc = subprocess.Popen(f'"{ffmpeg_path}" -v error -i "{video.full_filepath}" -f null error.log', shell=True,
+                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                g_windows_pid = proc.pid
+            else:
+                # Linux not yet supported
+                exit()
 
-                    output, error = proc.communicate()
+            output, error = proc.communicate()
 
-                    # Debug
-                    print(f'output= {output}\n')
-                    print(f'error= {error}\n')
+            # Debug
+            print(f'output= {output}\n')
+            print(f'error= {error}\n')
 
-                    row_index = count
-                    if (index_start != 1):
-                        row_index = (count + 1) - index_start
+            row_index = count
+            if (index_start != 1):
+                row_index = (count + 1) - index_start
 
-                    ffmpeg_result = ''
-                    if isMacOs():
-                        ffmpeg_result = output
-                    elif isWindowsOs():
-                        ffmpeg_result = error
+            ffmpeg_result = ''
+            if isMacOs():
+                ffmpeg_result = output
+            elif isWindowsOs():
+                ffmpeg_result = error
 
-                    elapsed_time = time.time() - start_time
-                    readable_time = convertTime(elapsed_time)
-                    row = ''
-                    if not ffmpeg_result:
-                        # Healthy
-                        print("\033[92m{0}\033[00m".format("HEALTHY -> {}".format(filename)), end='\n')  # red
+            elapsed_time = time.time() - start_time
+            readable_time = convertTime(elapsed_time)
+            row = ''
+            if not ffmpeg_result:
+                # Healthy
+                print("\033[92m{0}\033[00m".format("HEALTHY -> {}".format(video.filename)), end='\n')  # red
 
-                        log_file.write('=================================================================\n')
-                        log_file.write(f'{filename}\n')
-                        log_file.write('STATUS: ✓ HEALTHY ✓\n')
-                        log_file.write(f'DURATION: {readable_time}\n')
-                        log_file.flush()
+                log_file.write('=================================================================\n')
+                log_file.write(f'{video.filename}\n')
+                log_file.write('STATUS: ✓ HEALTHY ✓\n')
+                log_file.write(f'DURATION: {readable_time}\n')
+                log_file.flush()
 
-                        row = [filename, 0]
-                        listbox_completed_videos.insert(tk.END, f' {filename}')
-                        listbox_completed_videos.itemconfig(row_index, bg='green')
-                        tkinter_window.update()
-                    else:
-                        # Corrupt
-                        print("\033[31m{0}\033[00m".format("CORRUPTED -> {}".format(filename)), end='\n')  # red
+                row = [video.filename, 0]
+                listbox_completed_videos.insert(tk.END, f' {video.filename}')
+                listbox_completed_videos.itemconfig(row_index, bg='green')
+                tkinter_window.update()
+            else:
+                # Corrupt
+                print("\033[31m{0}\033[00m".format("CORRUPTED -> {}".format(video.filename)), end='\n')  # red
 
-                        log_file.write('=================================================================\n')
-                        log_file.write(f'{filename}\n')
-                        log_file.write('STATUS: X CORRUPT X\n')
-                        log_file.write(f'DURATION: {readable_time}\n')
-                        log_file.flush()
+                log_file.write('=================================================================\n')
+                log_file.write(f'{video.filename}\n')
+                log_file.write('STATUS: X CORRUPT X\n')
+                log_file.write(f'DURATION: {readable_time}\n')
+                log_file.flush()
 
-                        row = [filename, 1]
-                        listbox_completed_videos.insert(tk.END, f' {filename}')
-                        listbox_completed_videos.itemconfig(row_index, bg='red')
-                        tkinter_window.update()
+                row = [video.filename, 1]
+                listbox_completed_videos.insert(tk.END, f' {video.filename}')
+                listbox_completed_videos.itemconfig(row_index, bg='red')
+                tkinter_window.update()
 
-                    results_file_writer.writerow(row)
-                    results_file.flush()
+            results_file_writer.writerow(row)
+            results_file.flush()
 
-                    count += 1
+            count += 1
 
-                    g_progress.set(calculateProgress(count, totalVideoFiles))
-                    tkinter_window.update()
+            g_progress.set(calculateProgress(count, totalVideoFiles))
+            tkinter_window.update()
 
         g_count.set("---")
         g_currently_processing.set("N/A")
