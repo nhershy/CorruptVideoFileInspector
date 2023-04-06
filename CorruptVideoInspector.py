@@ -224,21 +224,22 @@ def inspectVideoFiles(directory, tkinter_window, listbox_completed_videos, index
         log_file.write('(DURATION IS IN HOURS:MINUTES:SECONDS)\n')
         log_file.flush()
 
-        count = 0
         all_videos_found = []
         for root, dirs, files in os.walk(directory):
             for filename in files:
                 if filename.lower().endswith(tuple(VIDEO_EXTENSIONS)):
-                    if (index_start > count + 1):
-                        count += 1
-                        continue
                     video_obj = VideoObject(filename, os.path.join(root, filename))
                     all_videos_found.append(video_obj)
 
         # Alphabetize list
         all_videos_found.sort(key=lambda x: x.filename)
 
+        count = 0
         for video in all_videos_found:
+            if (index_start > count + 1):
+                count += 1
+                continue
+
             start_time = time.time()
 
             global g_progress
