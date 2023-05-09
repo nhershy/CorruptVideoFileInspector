@@ -16,6 +16,7 @@ This program searches though a selected directory and its subdirectories for all
 
 ### How to Use
 * If using macOS, download and run the latest `CorruptVideoInspector.app` file found in the macOS [builds](https://github.com/nhershy/CorruptVideoFileInspector/tree/main/builds/macOS) folder.
+*Note: In the GitHub repository, the `CorruptVideoInspector.app` will show as a folder with the name `CorruptVideoInspector.app/Contents`. However, the Mac operating system will recognize that as an app and not a folder. To download the program correctly, navigate to the latest build version folder, copy the URL and paste it into [DownGit](https://minhaskamal.github.io/DownGit/#/home). Example of link to paste into DownGit: https://github.com/nhershy/CorruptVideoFileInspector/tree/main/builds/macOS/v1. Once the download has completed, extract the folder.*
 * If using Windows, download and run the latest `CorruptVideoInspector.exe` file found in the WindowsOS [builds](https://github.com/nhershy/CorruptVideoFileInspector/tree/main/builds/WindowsOS) folder. *Note: When first running the application on Windows OS, Windows Defender will display a warning message since this application is unsigned and not recognized by your PC. Click "More Info -> Run Anyway". I assure you this application is safe, as you can inspect the code yourself above.*
 * Linux is not yet supported.
 * Chose a directory (this will search the selected directory and all containing subdirectories for all video files)
